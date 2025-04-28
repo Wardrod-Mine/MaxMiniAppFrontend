@@ -1,72 +1,63 @@
 const TelegramBot = require('node-telegram-bot-api');
-const express = require('express');
-const cors = require('cors');
+const express     = require('express');
+const cors        = require('cors');
+require('dotenv').config();
 
-const token = '7606823926:AAHdpHUZ00CCvOcZtKwRfMkrcFfuXSZ8oqc';
-const webAppUrl = 'https://ornate-selkie-c27577.netlify.app';
+const token     = process.env.BOT_TOKEN;
+const webAppUrl = process.env.WEBAPP_URL;
 
-const bot = new TelegramBot(token, {polling: true});
+const bot = new TelegramBot(token, { polling: true });
 const app = express();
 
 app.use(express.json());
 app.use(cors());
 
+// --- ЕДИНЫЙ ОБРАБОТЧИК СООБЩЕНИЙ ---
 bot.on('message', async (msg) => {
-    const chatId = msg.chat.id;
-    const text = msg.text;
+  const chatId = msg.chat.id;
+  const text   = msg.text;
+  const data   = msg.web_app_data?.data; 
 
-    if(text === '/start') {
-        await bot.sendMessage(chatId, 'Ниже появится кнопка, заполни форму', {
-            reply_markup: {
-                keyboard: [
-                    [{text: 'Заполнить форму', web_app: {url: webAppUrl + '/form'}}]
-                ]
-            }
-        })
+  // 1) Если пользователь прислал /start — показываем кнопку WebApp
+  if (text === '/start') {
+    return bot.sendMessage(chatId, 'Привет! Заполни форму заказа:', {
+      reply_markup: {
+        inline_keyboard: [
+          // кнопка открывает ваш фронтенд /form (или корень)
+          [{ text: 'Оформить заказ', web_app: { url: webAppUrl + '/form' } }]
+        ]
+      }
+    });
+  }
 
-        await bot.sendMessage(chatId, 'Заходи в наш интернет магазин по кнопке ниже', {
-            reply_markup: {
-                inline_keyboard: [
-                    [{text: 'Сделать заказ', web_app: {url: webAppUrl}}]
-                ]
-            }
-        })
-    }
-
-    if(msg?.web_app_data?.data) {
-        try {
-            const data = JSON.parse(msg?.web_app_data?.data)
-            console.log(data)
-            await bot.sendMessage(chatId, 'Спасибо за обратную связь!')
-            await bot.sendMessage(chatId, 'Ваша страна: ' + data?.country);
-            await bot.sendMessage(chatId, 'Ваша улица: ' + data?.street);
-
-            setTimeout(async () => {
-                await bot.sendMessage(chatId, 'Всю информацию вы получите в этом чате');
-            }, 3000)
-        } catch (e) {
-            console.log(e);
-        }
-    }
-});
-
-app.post('/web-data', async (req, res) => {
-    const {queryId, products = [], totalPrice} = req.body;
+  // 2) Если пришли данные из WebApp (Telegram.WebApp.sendData)
+  if (data) {
     try {
-        await bot.answerWebAppQuery(queryId, {
-            type: 'article',
-            id: queryId,
-            title: 'Успешная покупка',
-            input_message_content: {
-                message_text: ` Поздравляю с покупкой, вы приобрели товар на сумму ${totalPrice}, ${products.map(item => item.title).join(', ')}`
-            }
-        })
-        return res.status(200).json({});
+      const order = JSON.parse(data);
+      // Отправляем подтверждение
+      await bot.sendMessage(chatId, `✅ Заказ получен! Сумма: ${order.totalPrice}₽`);
+      await bot.sendMessage(
+        chatId,
+        `📋 Данные:\nИмя: ${order.name}\nАдрес: ${order.address}\nEmail: ${order.email}`
+      );
     } catch (e) {
-        return res.status(500).json({})
+      console.error('Ошибка парсинга данных WebApp:', e);
+      await bot.sendMessage(chatId, '❌ Не удалось обработать заказ. Попробуйте ещё раз.');
     }
-})
+    return;
+  }
 
-const PORT = 8000;
+  // 3) Любые другие сообщения — показываем простую WebApp-кнопку «Каталог»
+  await bot.sendMessage(chatId, 'Наш каталог товаров:', {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: 'Открыть каталог', web_app: { url: webAppUrl } }]
+      ]
+    }
+  });
+});
+// --- КОНЕЦ ОБРАБОТЧИКА ---
 
-app.listen(PORT, () => console.log('server started on PORT ' + PORT))
+// Запускаем HTTP-сервер, если он нужен для вашего фронтенда
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server started on ${PORT}`));
