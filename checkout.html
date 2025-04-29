@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Оформление заказа</title>
+  <!-- Подключаем скомпилированный CSS -->
+  <link rel="stylesheet" href="dist/style.css">
+</head>
+<body>
+  <h1>Детали заказа</h1>
+  <form id="checkout-form">
+    <div>
+      <label for="name">Ваше имя</label><br>
+      <input type="text" id="name" name="name" required>
+    </div>
+    <div>
+      <label for="address">Ваш адрес</label><br>
+      <input type="text" id="address" name="address" required>
+    </div>
+    <div>
+      <label for="email">Email для чека</label><br>
+      <input type="email" id="email" name="email" required>
+    </div>
+  </form>
+
+  <!-- Подключаем ту же логику из app.js -->
+  <script src="app.js"></script>
+</body>
+</html>
