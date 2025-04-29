@@ -1,63 +1,20 @@
-const TelegramBot = require('node-telegram-bot-api');
-const express     = require('express');
-const cors        = require('cors');
-require('dotenv').config();
-
-const token     = process.env.BOT_TOKEN;
-const webAppUrl = process.env.WEBAPP_URL;
-
-const bot = new TelegramBot(token, { polling: true });
-const app = express();
-
-app.use(express.json());
-app.use(cors());
-
-// --- ЕДИНЫЙ ОБРАБОТЧИК СООБЩЕНИЙ ---
-bot.on('message', async (msg) => {
-  const chatId = msg.chat.id;
-  const text   = msg.text;
-  const data   = msg.web_app_data?.data; 
-
-  // 1) Если пользователь прислал /start — показываем кнопку WebApp
-  if (text === '/start') {
-    return bot.sendMessage(chatId, 'Привет! Заполни форму заказа:', {
-      reply_markup: {
-        inline_keyboard: [
-          // кнопка открывает ваш фронтенд /form (или корень)
-          [{ text: 'Оформить заказ', web_app: { url: webAppUrl + '/form' } }]
-        ]
-      }
-    });
-  }
-
-  // 2) Если пришли данные из WebApp (Telegram.WebApp.sendData)
-  if (data) {
-    try {
-      const order = JSON.parse(data);
-      // Отправляем подтверждение
-      await bot.sendMessage(chatId, `✅ Заказ получен! Сумма: ${order.totalPrice}₽`);
-      await bot.sendMessage(
-        chatId,
-        `📋 Данные:\nИмя: ${order.name}\nАдрес: ${order.address}\nEmail: ${order.email}`
-      );
-    } catch (e) {
-      console.error('Ошибка парсинга данных WebApp:', e);
-      await bot.sendMessage(chatId, '❌ Не удалось обработать заказ. Попробуйте ещё раз.');
-    }
-    return;
-  }
-
-  // 3) Любые другие сообщения — показываем простую WebApp-кнопку «Каталог»
-  await bot.sendMessage(chatId, 'Наш каталог товаров:', {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: 'Открыть каталог', web_app: { url: webAppUrl } }]
-      ]
-    }
-  });
-});
-// --- КОНЕЦ ОБРАБОТЧИКА ---
-
-// Запускаем HTTP-сервер, если он нужен для вашего фронтенда
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server started on ${PORT}`));
++ <link rel="stylesheet" href="dist/style.css">
+</head>
+- </body>
+- <!-- webapp/index.html -->
+- …  
+- <body>
+-   <h1>Мой каталог</h1>
+-   <div id="products"></div>
+-   <!-- кнопка-пустышка, её мы не стираем, но по ней JS не слушает -->
+-   <button id="go-cart" style="display:none;">Корзина</button>
+-   <script src="app.js"></script>
+- </body>
+-
+- </html>
++ <body>
++   <h1>Мой каталог</h1>
++   <div id="products"></div>
++   <script src="app.js"></script>
++ </body>
++</html>
